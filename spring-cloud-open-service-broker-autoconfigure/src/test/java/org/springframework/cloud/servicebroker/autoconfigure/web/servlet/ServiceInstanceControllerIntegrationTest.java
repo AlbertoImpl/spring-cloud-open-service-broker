@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.servicebroker.autoconfigure.web;
+package org.springframework.cloud.servicebroker.autoconfigure.web.servlet;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import org.springframework.cloud.servicebroker.autoconfigure.web.AbstractServiceInstanceControllerIntegrationTest;
 import org.springframework.cloud.servicebroker.controller.ServiceBrokerExceptionHandler;
 import org.springframework.cloud.servicebroker.exception.ServiceBrokerAsyncRequiredException;
 import org.springframework.cloud.servicebroker.exception.ServiceBrokerInvalidParametersException;
@@ -42,6 +43,7 @@ import org.springframework.cloud.servicebroker.model.instance.UpdateServiceInsta
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,12 +55,14 @@ import static org.hamcrest.core.StringContains.containsString;
 import static org.springframework.cloud.servicebroker.exception.ServiceBrokerAsyncRequiredException.ASYNC_REQUIRED_ERROR;
 import static org.springframework.cloud.servicebroker.model.ServiceBrokerRequest.API_INFO_LOCATION_HEADER;
 import static org.springframework.cloud.servicebroker.model.ServiceBrokerRequest.ORIGINATING_IDENTITY_HEADER;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -82,12 +86,16 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 				.async(true)
 				.build());
 
-		mockMvc.perform(put(buildCreateUpdateUrl(PLATFORM_INSTANCE_ID, true))
+		MvcResult mvcResult = mockMvc.perform(put(buildCreateUpdateUrl(PLATFORM_INSTANCE_ID, true))
 				.content(createRequestBody)
+				.contentType(MediaType.APPLICATION_JSON)
 				.header(API_INFO_LOCATION_HEADER, API_INFO_LOCATION)
 				.header(ORIGINATING_IDENTITY_HEADER, buildOriginatingIdentityHeader())
-				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isAccepted());
 
 		CreateServiceInstanceRequest actualRequest = verifyCreateServiceInstance();
@@ -106,10 +114,14 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 		// force a condition where the platformInstanceId segment is present but empty
 		// e.g. http://test.example.com//v2/service_instances/[guid]
 		String url = "http://test.example.com/" + buildCreateUpdateUrl();
-		mockMvc.perform(put(url)
+		MvcResult mvcResult = mockMvc.perform(put(url)
 				.content(createRequestBody)
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isAccepted());
 
 		CreateServiceInstanceRequest actualRequest = verifyCreateServiceInstance();
@@ -123,10 +135,14 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 		setupServiceInstanceService(CreateServiceInstanceResponse.builder()
 				.build());
 
-		mockMvc.perform(put(buildCreateUpdateUrl())
+		MvcResult mvcResult = mockMvc.perform(put(buildCreateUpdateUrl())
 				.content(createRequestBody)
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isCreated());
 
 		CreateServiceInstanceRequest actualRequest = verifyCreateServiceInstance();
@@ -142,10 +158,14 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 				.instanceExisted(true)
 				.build());
 
-		mockMvc.perform(put(buildCreateUpdateUrl())
+		MvcResult mvcResult = mockMvc.perform(put(buildCreateUpdateUrl())
 				.content(createRequestBody)
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isOk());
 	}
 
@@ -153,10 +173,14 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 	public void createServiceInstanceWithUnknownServiceDefinitionIdFails() throws Exception {
 		setupCatalogService(null);
 
-		mockMvc.perform(put(buildCreateUpdateUrl())
+		MvcResult mvcResult = mockMvc.perform(put(buildCreateUpdateUrl())
 				.content(createRequestBody)
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(jsonPath("$.description", containsString(serviceDefinition.getId())));
 	}
@@ -167,10 +191,14 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 
 		setupServiceInstanceService(new ServiceInstanceExistsException(SERVICE_INSTANCE_ID, serviceDefinition.getId()));
 
-		mockMvc.perform(put(buildCreateUpdateUrl())
+		MvcResult mvcResult = mockMvc.perform(put(buildCreateUpdateUrl())
 				.content(createRequestBody)
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.description", containsString(SERVICE_INSTANCE_ID)));
 	}
@@ -181,10 +209,14 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 
 		setupServiceInstanceService(new ServiceBrokerAsyncRequiredException("async required description"));
 
-		mockMvc.perform(put(buildCreateUpdateUrl())
+		MvcResult mvcResult = mockMvc.perform(put(buildCreateUpdateUrl())
 				.content(createRequestBody)
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(jsonPath("$.error", is(ASYNC_REQUIRED_ERROR)))
 				.andExpect(jsonPath("$.description", endsWith("async required description")));
@@ -196,10 +228,14 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 
 		setupServiceInstanceService(new ServiceBrokerInvalidParametersException("invalid parameters description"));
 
-		mockMvc.perform(put(buildCreateUpdateUrl())
+		MvcResult mvcResult = mockMvc.perform(put(buildCreateUpdateUrl())
 				.content(createRequestBody)
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(jsonPath("$.description", endsWith("invalid parameters description")));
 	}
@@ -210,10 +246,14 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 
 		setupServiceInstanceService(new NullPointerException("unknown error"));
 
-		mockMvc.perform(put(buildCreateUpdateUrl())
+		MvcResult mvcResult = mockMvc.perform(put(buildCreateUpdateUrl())
 				.content(createRequestBody)
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isInternalServerError())
 				.andExpect(jsonPath("$.description", endsWith("unknown error")));
 	}
@@ -222,21 +262,7 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 	public void createServiceInstanceWithInvalidFieldsFails() throws Exception {
 		String body = createRequestBody.replace("service_id", "foo");
 
-		mockMvc.perform(put(buildCreateUpdateUrl())
-				.content(body)
-				.header(API_INFO_LOCATION_HEADER, API_INFO_LOCATION)
-				.header(ORIGINATING_IDENTITY_HEADER, buildOriginatingIdentityHeader())
-				.contentType(MediaType.APPLICATION_JSON)
-				.accept(MediaType.APPLICATION_JSON))
-				.andExpect(status().isUnprocessableEntity())
-				.andExpect(jsonPath("$.description", containsString("serviceDefinitionId")));
-	}
-
-	@Test
-	public void createServiceInstanceWithMissingFieldsFails() throws Exception {
-		String body = "{}";
-
-		mockMvc.perform(put(buildCreateUpdateUrl())
+		MvcResult mvcResult = mockMvc.perform(put(buildCreateUpdateUrl())
 				.content(body)
 				.header(API_INFO_LOCATION_HEADER, API_INFO_LOCATION)
 				.header(ORIGINATING_IDENTITY_HEADER, buildOriginatingIdentityHeader())
@@ -244,7 +270,25 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 				.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(jsonPath("$.description", containsString("serviceDefinitionId")))
-				.andExpect(jsonPath("$.description", containsString("planId")));
+				.andExpect(request().asyncNotStarted())
+				.andReturn();
+	}
+
+	@Test
+	public void createServiceInstanceWithMissingFieldsFails() throws Exception {
+		String body = "{}";
+
+		MvcResult mvcResult = mockMvc.perform(put(buildCreateUpdateUrl())
+				.content(body)
+				.header(API_INFO_LOCATION_HEADER, API_INFO_LOCATION)
+				.header(ORIGINATING_IDENTITY_HEADER, buildOriginatingIdentityHeader())
+				.contentType(MediaType.APPLICATION_JSON)
+				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(status().isUnprocessableEntity())
+				.andExpect(jsonPath("$.description", containsString("serviceDefinitionId")))
+				.andExpect(jsonPath("$.description", containsString("planId")))
+				.andExpect(request().asyncNotStarted())
+				.andReturn();
 	}
 
 	@Test
@@ -252,11 +296,15 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 		setupServiceInstanceService(GetServiceInstanceResponse.builder()
 			.build());
 
-		mockMvc.perform(get(buildCreateUpdateUrl(PLATFORM_INSTANCE_ID, false))
+		MvcResult mvcResult = mockMvc.perform(get(buildCreateUpdateUrl(PLATFORM_INSTANCE_ID, false))
 				.header(API_INFO_LOCATION_HEADER, API_INFO_LOCATION)
 				.header(ORIGINATING_IDENTITY_HEADER, buildOriginatingIdentityHeader())
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isOk());
 
 		GetServiceInstanceRequest actualRequest = verifyGetServiceInstance();
@@ -267,11 +315,15 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 	public void getServiceInstanceWithOperationInProgressFails() throws Exception {
 		setupServiceInstanceService(new ServiceBrokerOperationInProgressException("still working"));
 
-		mockMvc.perform(get(buildCreateUpdateUrl(PLATFORM_INSTANCE_ID, false))
+		MvcResult mvcResult = mockMvc.perform(get(buildCreateUpdateUrl(PLATFORM_INSTANCE_ID, false))
 				.header(API_INFO_LOCATION_HEADER, API_INFO_LOCATION)
 				.header(ORIGINATING_IDENTITY_HEADER, buildOriginatingIdentityHeader())
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.description", containsString("still working")));
 	}
@@ -285,10 +337,14 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 				.operation("working")
 				.build());
 
-		mockMvc.perform(delete(buildDeleteUrl(PLATFORM_INSTANCE_ID, true))
+		MvcResult mvcResult = mockMvc.perform(delete(buildDeleteUrl(PLATFORM_INSTANCE_ID, true))
 				.header(API_INFO_LOCATION_HEADER, API_INFO_LOCATION)
 				.header(ORIGINATING_IDENTITY_HEADER, buildOriginatingIdentityHeader())
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.operation", equalTo("working")));
 
@@ -304,8 +360,12 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 		setupServiceInstanceService(DeleteServiceInstanceResponse.builder()
 				.build());
 
-		mockMvc.perform(delete(buildDeleteUrl())
+		MvcResult mvcResult = mockMvc.perform(delete(buildDeleteUrl())
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isOk())
 				.andExpect(content().string("{}"));
 
@@ -320,8 +380,12 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 
 		setupServiceInstanceService(new ServiceInstanceDoesNotExistException(SERVICE_INSTANCE_ID));
 
-		mockMvc.perform(delete(buildDeleteUrl())
+		MvcResult mvcResult = mockMvc.perform(delete(buildDeleteUrl())
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isGone())
 				.andExpect(jsonPath("$", anEmptyMap()));
 	}
@@ -330,8 +394,12 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 	public void deleteServiceInstanceWithUnknownServiceDefinitionIdFails() throws Exception {
 		setupCatalogService(null);
 
-		mockMvc.perform(delete(buildDeleteUrl())
+		MvcResult mvcResult = mockMvc.perform(delete(buildDeleteUrl())
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(jsonPath("$.description", containsString(serviceDefinition.getId())));
 	}
@@ -345,12 +413,16 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 				.operation("working")
 				.build());
 
-		mockMvc.perform(patch(buildCreateUpdateUrl(PLATFORM_INSTANCE_ID, true))
+		MvcResult mvcResult = mockMvc.perform(patch(buildCreateUpdateUrl(PLATFORM_INSTANCE_ID, true))
 				.content(updateRequestBody)
 				.header(API_INFO_LOCATION_HEADER, API_INFO_LOCATION)
 				.header(ORIGINATING_IDENTITY_HEADER, buildOriginatingIdentityHeader())
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.operation", equalTo("working")));
 
@@ -366,10 +438,14 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 		setupServiceInstanceService(UpdateServiceInstanceResponse.builder()
 				.build());
 
-		mockMvc.perform(patch(buildCreateUpdateUrl())
+		MvcResult mvcResult = mockMvc.perform(patch(buildCreateUpdateUrl())
 				.content(updateRequestBody)
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isOk())
 				.andExpect(content().string("{}"));
 
@@ -382,10 +458,14 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 	public void updateServiceInstanceWithUnknownServiceDefinitionIdFails() throws Exception {
 		setupCatalogService(null);
 
-		mockMvc.perform(patch(buildCreateUpdateUrl())
+		MvcResult mvcResult = mockMvc.perform(patch(buildCreateUpdateUrl())
 				.content(updateRequestBody)
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
 				.andExpect(jsonPath("$.description", containsString(serviceDefinition.getId())));
@@ -397,10 +477,14 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 
 		setupServiceInstanceService(new ServiceInstanceUpdateNotSupportedException("description"));
 
-		mockMvc.perform(patch(buildCreateUpdateUrl())
+		MvcResult mvcResult = mockMvc.perform(patch(buildCreateUpdateUrl())
 				.content(updateRequestBody)
 				.contentType(MediaType.APPLICATION_JSON)
 				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
 				.andExpect(jsonPath("$.description", containsString("description")));
@@ -413,7 +497,11 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 				.description("working on it")
 				.build());
 
-		mockMvc.perform(get(buildLastOperationUrl()))
+		MvcResult mvcResult = mockMvc.perform(get(buildLastOperationUrl()))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.state", is(OperationState.IN_PROGRESS.toString())))
 				.andExpect(jsonPath("$.description", is("working on it")));
@@ -429,9 +517,13 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 				.description("all good")
 				.build());
 
-		mockMvc.perform(get(buildLastOperationUrl(PLATFORM_INSTANCE_ID))
+		MvcResult mvcResult = mockMvc.perform(get(buildLastOperationUrl(PLATFORM_INSTANCE_ID))
 				.header(API_INFO_LOCATION_HEADER, API_INFO_LOCATION)
 				.header(ORIGINATING_IDENTITY_HEADER, buildOriginatingIdentityHeader()))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.state", is(OperationState.SUCCEEDED.toString())))
 				.andExpect(jsonPath("$.description", is("all good")));
@@ -448,7 +540,11 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 				.deleteOperation(true)
 				.build());
 
-		mockMvc.perform(get(buildLastOperationUrl()))
+		MvcResult mvcResult = mockMvc.perform(get(buildLastOperationUrl()))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isGone())
 				.andExpect(jsonPath("$.state", is(OperationState.SUCCEEDED.toString())))
 				.andExpect(jsonPath("$.description", is("all gone")));
@@ -461,7 +557,11 @@ public class ServiceInstanceControllerIntegrationTest extends AbstractServiceIns
 				.description("not so good")
 				.build());
 
-		mockMvc.perform(get(buildLastOperationUrl()))
+		MvcResult mvcResult = mockMvc.perform(get(buildLastOperationUrl()))
+				.andExpect(request().asyncStarted())
+				.andReturn();
+
+		mockMvc.perform(asyncDispatch(mvcResult))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.state", is(OperationState.FAILED.toString())))
 				.andExpect(jsonPath("$.description", is("not so good")));
